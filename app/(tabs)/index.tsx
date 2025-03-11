@@ -1,74 +1,213 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator,
+  SafeAreaView,
+  TextInput,
+  ImageBackground
+} from 'react-native';  
+import { StatusBar } from 'expo-status-bar';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function App() {
+  const [inputValue, setInputValue] = useState('');
+  const [pokemon, setPokemon] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-export default function HomeScreen() {
+  const handleLetterPress = (letter) => {
+    setInputValue(inputValue + letter);
+  };
+
+  const handleNumberPress = (number) => {
+    setInputValue(inputValue + number);
+  };
+  
+  const handleClear = () => {
+    setInputValue('');
+    setPokemon(null);
+    setError(null);
+  };
+  
+  const handleSearch = async () => {
+    if (!inputValue.trim()) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${inputValue.toLowerCase()}`);
+      
+      if (!response.ok) {
+        throw new Error('Pokemon not found');
+      }
+      
+      const data = await response.json();
+      setPokemon(data);
+    } catch (err) {
+      setError(err.message);
+      setPokemon(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="light" />
+      
+      <ImageBackground 
+        source={require('../../pokedex.png')} 
+        style={styles.backgroundImage}
+        resizeMode="contain"
+      >
+        <View style={styles.pokemonDisplayArea}>
+          {loading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : pokemon ? (
+            <View style={styles.pokemonContainer}>
+              <Image 
+                source={{ uri: pokemon.sprites.front_default }} 
+                style={styles.pokemonImage} 
+                resizeMode="contain"
+              />
+              <Text style={styles.pokemonName}>{pokemon.name.toUpperCase()}</Text>
+              <Text style={styles.pokemonInfo}>#{pokemon.id}</Text>
+              <Text style={styles.pokemonInfo}>Type: {pokemon.types.map(type => type.type.name).join(', ')}</Text>
+              <Text style={styles.pokemonInfo}>Height: {pokemon.height/10}m</Text>
+              <Text style={styles.pokemonInfo}>Weight: {pokemon.weight/10}kg</Text>
+            </View>
+          ) : (
+            <Text style={styles.placeholderText}>No Pokemon</Text>
+          )}
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>ENTER NAME OR NUMBER</Text>
+          <TextInput
+            style={styles.nameInput}
+            value={inputValue}
+            onChangeText={setInputValue}
+            placeholder="Pokemon name/id"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            onSubmitEditing={handleSearch}
+          />
+        </View>
+
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+            <Text style={styles.actionButtonText}>SEARCH</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
+            <Text style={styles.actionButtonText}>CLEAR</Text>
+          </TouchableOpacity>
+        </View>
+      </ImageBackground>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  backgroundImage: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    width: '100%',
+    height: '100%',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  pokemonDisplayArea: {
     position: 'absolute',
+    top: '15%',
+    width: '65%',
+    height: '30%',
+  },
+  pokemonContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  pokemonImage: {
+    width: 100,
+    height: 100,
+  },
+  pokemonName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  pokemonInfo: {
+    fontSize: 12,
+    color: '#000',
+    marginTop: 2,
+  },
+  placeholderText: {
+    color: '#333',
+    fontStyle: 'italic',
+  },
+  errorText: {
+    color: '#FF0000',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  inputContainer: {
+    top: '52%', 
+    left: '40',
+    width: '80%',
+    backgroundColor: '#000066',
+    padding: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  inputLabel: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  nameInput: {
+    width: '90%',
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 5,
+    color: '#FFF',
+    textAlign: 'center',
+    fontSize: 16,
+    paddingHorizontal: 10,
+  },
+  actionButtonsRow: {
+    position: 'absolute',
+    top: '79%', 
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+    left: '10%',
+  },
+  searchButton: {
+    width: '35%',
+    height: 51,
+    justifyContent: 'center',
+    alignItems: 'center',
+    right: '9.5%', 
+  },
+  clearButton: {
+    width: '35%',
+    height: 51,
+    justifyContent: 'center',
+    alignItems: 'center',
+    right: '38%', 
+  },
+  actionButtonText: {
+    color: 'transparent',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
